@@ -38,22 +38,27 @@ class PathPlanning:
         # Default: produce a short straight-ahead path from the current pose.
         # delete/replace this with your own algorithm.
         
+
+        #split the cones to 2 lists
         b_cones = [cone for cone in self.cones if cone.color == 1]
         y_cones = [cone for cone in self.cones if cone.color == 0]
 
-        y_cones.sort(key=lambda cone: cone.y, reverse=True)
-        b_cones.sort(key=lambda cone: cone.y)
+        #this sorts the list of cones to give proirity 
+        #to the top most yellow cone and to the least bottom blue cone 
+        y_cones.sort(key=lambda cone: cone.x)
+        b_cones.sort(key=lambda cone: cone.x)
+
+        if y_cones[0].x < self.car_pose.x or b_cones[0] < self.car_pose.x:
+            y_cones.sort(key=lambda cone: cone.y)
+            b_cones.sort(key=lambda cone: cone.y, reverse=True)
+        else:
+            y_cones.sort(key=lambda cone: cone.y, reverse=True)
+            b_cones.sort(key=lambda cone: cone.y)
 
         print("blue cones: ") 
         print(b_cones)
         print("yellow cones: ") 
         print(y_cones)
-
-        print("blue cones list length: ")
-        print(len(b_cones))
-
-        print("yellow cones list length: ")
-        print(len(y_cones))
         
 
         for y_cone in y_cones:
@@ -78,13 +83,19 @@ class PathPlanning:
                     y_cones.append(Cone(b_cone.x, b_cone.y+2, color=0))
                 else:
                     y_cones.append(Cone(b_cone.x, b_cone.y-2, color=0))
+                    
 
+        
         if (self.car_pose.x > y_cones[0].x) or (self.car_pose.x > b_cones[0].x):
-            y_cones.sort(key=lambda cone: cone.x, reverse=True)
-            b_cones.sort(key=lambda cone: cone.x, reverse=True)
+            y_cones.sort(key=lambda cone: (cone.x, -cone.y), reverse=True)
+            b_cones.sort(key=lambda cone: (cone.x, cone.y), reverse=True)
+            
+            sign = -1
         else:
-            y_cones.sort(key=lambda cone: cone.x)
-            b_cones.sort(key=lambda cone: cone.x)
+            y_cones.sort(key=lambda cone: (cone.x, -cone.y))
+            b_cones.sort(key=lambda cone: (cone.x, cone.y))
+
+            sign = 1
 
         print("blue cones: ") 
         print(b_cones)
@@ -101,13 +112,11 @@ class PathPlanning:
                 waypoints.append((y_cones[i_y].x, (y_cones[i_y].y + b_cones[i_b].y) / 2))
                 i_b+=1
                 i_y+=1
-            elif y_cones[i_y].x < b_cones[i_b].x:
+            elif sign * y_cones[i_y].x < sign * b_cones[i_b].x:
                 i_y+=1
             else:
                 i_b+=1
                 
-                
-
     
         if (self.car_pose.x > y_cones[0].x) or (self.car_pose.x > b_cones[0].x):
             waypoints.insert(1, (waypoints[1][0]+0.5, waypoints[1][1]))
@@ -133,7 +142,7 @@ class PathPlanning:
 
         for j in range(1, len(waypoints)):
 
-            print(f"waypoint[{j}]")
+            #print(f"waypoint[{j}]")
 
             dx_goal = waypoints[j][0] - current_x
             dy_goal = waypoints[j][1] - current_y
@@ -151,10 +160,10 @@ class PathPlanning:
                 current_x = car_at_wp[0] + dx
                 current_y = car_at_wp[1] + dy
 
-                print("current x:")
-                print(current_x)
-                print("current y")
-                print(current_y)
+                #print("current x:")
+                #print(current_x)
+                #print("current y")
+                #print(current_y)
 
                 path.append((current_x, current_y))    
             
