@@ -37,23 +37,46 @@ class PathPlanning:
 
         # Default: produce a short straight-ahead path from the current pose.
         # delete/replace this with your own algorithm.
+
+        path : Path2D = []
+
+        if not self.cones:
+            return path
         
+
+        #split the cones to 2 lists
         b_cones = [cone for cone in self.cones if cone.color == 1]
         y_cones = [cone for cone in self.cones if cone.color == 0]
 
-        y_cones.sort(key=lambda cone: cone.y, reverse=True)
-        b_cones.sort(key=lambda cone: cone.y)
+        #sorts the cones to make a consistence output no matter the order of the cones percived 
+        y_cones.sort(key=lambda cone: cone.x)
+        b_cones.sort(key=lambda cone: cone.x)
+
+
+        cx = self.car_pose.x
+        cy = self.car_pose.y
+
+        #a flag if the start of the path is on left of the car or on the right
+        if (y_cones and y_cones[0].x < cx) or (b_cones and b_cones[0].x < cx):
+            dirction = -1
+        else:
+            dirction = 1
+
+        
+        #if some cones color have the same x value this sorts the list of cones to give proirity 
+        #to the highest yellow cone and to the lowest blue cone if it's on the right of the car
+        #to the lowest yellow cone and the highest blue cone if it's on the left of the car
+        if dirction == -1:
+            y_cones.sort(key=lambda cone: cone.y)
+            b_cones.sort(key=lambda cone: cone.y, reverse=True)
+        else:
+            y_cones.sort(key=lambda cone: cone.y, reverse=True)
+            b_cones.sort(key=lambda cone: cone.y)
 
         print("blue cones: ") 
         print(b_cones)
         print("yellow cones: ") 
         print(y_cones)
-
-        print("blue cones list length: ")
-        print(len(b_cones))
-
-        print("yellow cones list length: ")
-        print(len(y_cones))
         
 
         for y_cone in y_cones:
@@ -62,7 +85,7 @@ class PathPlanning:
                 if y_cone.x == b_cone.x:
                     seen+=1
             if seen == 0:
-                if self.car_pose.x > y_cone.x:
+                if cx > y_cone.x:
                     b_cones.append(Cone(y_cone.x, y_cone.y-2, color=1))
                 else:
                     b_cones.append(Cone(y_cone.x, y_cone.y+2, color=1))
@@ -74,17 +97,19 @@ class PathPlanning:
                 if b_cone.x == y_cone.x:
                     seen+=1
             if seen == 0:
-                if self.car_pose.x > b_cone.x:
+                if cx > b_cone.x:
                     y_cones.append(Cone(b_cone.x, b_cone.y+2, color=0))
                 else:
                     y_cones.append(Cone(b_cone.x, b_cone.y-2, color=0))
+                    
 
-        if (self.car_pose.x > y_cones[0].x) or (self.car_pose.x > b_cones[0].x):
-            y_cones.sort(key=lambda cone: cone.x, reverse=True)
-            b_cones.sort(key=lambda cone: cone.x, reverse=True)
+        
+        if dirction == -1:
+            y_cones.sort(key=lambda cone: (cone.x, -cone.y), reverse=True)
+            b_cones.sort(key=lambda cone: (cone.x, cone.y), reverse=True)
         else:
-            y_cones.sort(key=lambda cone: cone.x)
-            b_cones.sort(key=lambda cone: cone.x)
+            y_cones.sort(key=lambda cone: (cone.x, -cone.y))
+            b_cones.sort(key=lambda cone: (cone.x, cone.y))
 
         print("blue cones: ") 
         print(b_cones)
@@ -93,7 +118,7 @@ class PathPlanning:
 
 
         waypoints : Path2D = []
-        waypoints.append((self.car_pose.x, self.car_pose.y))
+        waypoints.append((cx, cy))
         i_b = 0
         i_y = 0
         for i in range(0, min(len(b_cones), len(y_cones))):
@@ -101,15 +126,13 @@ class PathPlanning:
                 waypoints.append((y_cones[i_y].x, (y_cones[i_y].y + b_cones[i_b].y) / 2))
                 i_b+=1
                 i_y+=1
-            elif y_cones[i_y].x < b_cones[i_b].x:
+            elif dirction * y_cones[i_y].x < dirction * b_cones[i_b].x:
                 i_y+=1
             else:
                 i_b+=1
                 
-                
-
     
-        if (self.car_pose.x > y_cones[0].x) or (self.car_pose.x > b_cones[0].x):
+        if dirction == -1:
             waypoints.insert(1, (waypoints[1][0]+0.5, waypoints[1][1]))
         else:
             waypoints.insert(1, (waypoints[1][0]-0.5, waypoints[1][1]))
@@ -123,18 +146,12 @@ class PathPlanning:
 
         import math
 
-        path : Path2D = []
         step = 0.2
-
-        current_x = self.car_pose.x
-        current_y = self.car_pose.y
-
-        car_at_wp = (self.car_pose.x, self.car_pose.y)
+        current_x = cx
+        current_y = cy
+        car_at_wp = (cx, cy)
 
         for j in range(1, len(waypoints)):
-
-            print(f"waypoint[{j}]")
-
             dx_goal = waypoints[j][0] - current_x
             dy_goal = waypoints[j][1] - current_y
 
@@ -144,17 +161,11 @@ class PathPlanning:
             num_steps = round(dist/step)
 
             for i in range(1, num_steps+1):
-
                 dx = math.cos(theta_goal) * step * i
                 dy = math.sin(theta_goal) * step * i
 
                 current_x = car_at_wp[0] + dx
                 current_y = car_at_wp[1] + dy
-
-                print("current x:")
-                print(current_x)
-                print("current y")
-                print(current_y)
 
                 path.append((current_x, current_y))    
             
