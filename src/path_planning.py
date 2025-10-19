@@ -41,6 +41,9 @@ class PathPlanning:
         b_cones = [cone for cone in self.cones if cone.color == 1]
         y_cones = [cone for cone in self.cones if cone.color == 0]
 
+        y_cones.sort(key=lambda cone: cone.y, reverse=True)
+        b_cones.sort(key=lambda cone: cone.y)
+
         print("blue cones: ") 
         print(b_cones)
         print("yellow cones: ") 
@@ -51,7 +54,7 @@ class PathPlanning:
 
         print("yellow cones list length: ")
         print(len(y_cones))
-
+        
 
         for y_cone in y_cones:
             seen = 0
@@ -91,25 +94,43 @@ class PathPlanning:
 
         waypoints : Path2D = []
         waypoints.append((self.car_pose.x, self.car_pose.y))
-        for i in range(0, len(b_cones)):
-            waypoints.append((y_cones[i].x, (y_cones[i].y + b_cones[i].y) / 2)) 
+        i_b = 0
+        i_y = 0
+        for i in range(0, min(len(b_cones), len(y_cones))):
+            if y_cones[i_y].x == b_cones[i_b].x:
+                waypoints.append((y_cones[i_y].x, (y_cones[i_y].y + b_cones[i_b].y) / 2))
+                i_b+=1
+                i_y+=1
+            elif y_cones[i_y].x < b_cones[i_b].x:
+                i_y+=1
+            else:
+                i_b+=1
+                
+                
+
+    
+        if (self.car_pose.x > y_cones[0].x) or (self.car_pose.x > b_cones[0].x):
+            waypoints.insert(1, (waypoints[1][0]+0.5, waypoints[1][1]))
+        else:
+            waypoints.insert(1, (waypoints[1][0]-0.5, waypoints[1][1]))
 
         print("waypoints: ")
         print(waypoints)
 
+
+
+
+
         import math
 
         path : Path2D = []
-        step = 0.25
+        step = 0.2
 
         current_x = self.car_pose.x
         current_y = self.car_pose.y
 
-        theta_current = self.car_pose.yaw #in radian
-
         car_at_wp = (self.car_pose.x, self.car_pose.y)
 
-        
         for j in range(1, len(waypoints)):
 
             print(f"waypoint[{j}]")
@@ -124,13 +145,6 @@ class PathPlanning:
 
             for i in range(1, num_steps+1):
 
-                if abs(theta_current - theta_goal) > 0.2:
-                    if theta_current < theta_goal:
-                        theta_current+=0.25
-                    if theta_current > theta_goal:
-                        theta_current-=0.25
-
-
                 dx = math.cos(theta_goal) * step * i
                 dy = math.sin(theta_goal) * step * i
 
@@ -141,14 +155,9 @@ class PathPlanning:
                 print(current_x)
                 print("current y")
                 print(current_y)
-                path.append((current_x, current_y))
+
+                path.append((current_x, current_y))    
             
             car_at_wp = (current_x, current_y)
-
-
-        #print("path: ")
-        #print(path)
-
-        #path = waypoints
 
         return path
